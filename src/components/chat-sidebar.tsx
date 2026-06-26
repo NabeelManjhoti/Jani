@@ -83,7 +83,9 @@ export function ChatSidebar({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  onDeleteChat(chat.id);
+                  if (window.confirm("Delete this chat? Yeh baatien hamesha ke liye delete ho jayengi.")) {
+                    onDeleteChat(chat.id);
+                  }
                 }}
                 className="shrink-0 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-500/10 hover:text-red-500"
               >

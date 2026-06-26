@@ -13,6 +13,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
+
     const existing = await sql`
       SELECT id FROM users WHERE email = ${email}
     `;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 
 interface ChatInputProps {
@@ -11,6 +11,10 @@ interface ChatInputProps {
 export function ChatInput({ onSend, isLoading }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const handleSubmit = () => {
     const trimmed = input.trim();

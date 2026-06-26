@@ -20,9 +20,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem("theme") as Theme | null;
     if (stored) {
       setTheme(stored);
-      document.documentElement.classList.toggle("dark", stored === "dark");
-    } else {
-      document.documentElement.classList.add("dark");
     }
   }, []);
 

@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChatInput } from "@/components/chat-input";
 import { ChatMessage } from "@/components/chat-message";
-import { Menu, MessageCircle } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { Menu, MessageCircle, RefreshCw } from "lucide-react";
 
 interface Message {
   id: string;
@@ -23,10 +22,11 @@ export function ChatInterface({
   onNewChat,
   onToggleSidebar,
 }: ChatInterfaceProps) {
-  const { data: session } = useSession();
   const [messages, setMessages] = useState<Message[]>([]);
   const [streamingContent, setStreamingContent] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [failedContent, setFailedContent] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,27 +43,33 @@ export function ChatInterface({
   }, [messages, streamingContent]);
 
   const loadMessages = async (id: string) => {
-    const res = await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId: id }),
-    });
-    if (res.ok) {
-      const { data } = await res.json();
-      setMessages(data ?? []);
+    setIsFetching(true);
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId: id }),
+      });
+      if (res.ok) {
+        const { data } = await res.json();
+        setMessages(data ?? []);
+      }
+    } finally {
+      setIsFetching(false);
     }
   };
 
   const handleSend = async (content: string) => {
     if (!chatId || !content.trim() || isLoading) return;
 
-    const tempId = "temp-" + Date.now();
+    const tempId = "temp-" + crypto.randomUUID();
     setMessages((prev) => [
       ...prev,
       { id: tempId, role: "user", content: content.trim() },
     ]);
     setIsLoading(true);
     setStreamingContent("");
+    setFailedContent(null);
 
     try {
       const res = await fetch("/api/chat", {
@@ -72,7 +78,6 @@ export function ChatInterface({
         body: JSON.stringify({
           chatId,
           message: content.trim(),
-          userId: session?.user?.id,
         }),
       });
 
@@ -97,16 +102,17 @@ export function ChatInterface({
       setMessages((prev) => [
         ...prev,
         {
-          id: "assistant-" + Date.now(),
+          id: "assistant-" + crypto.randomUUID(),
           role: "assistant",
           content: accumulated,
         },
       ]);
     } catch {
+      setFailedContent(content.trim());
       setMessages((prev) => [
         ...prev,
         {
-          id: "error-" + Date.now(),
+          id: "error-" + crypto.randomUUID(),
           role: "assistant",
           content:
             "Sorry Jani, kuch masla hogaya. Dobara try karo ya mughe batao.",
@@ -115,6 +121,13 @@ export function ChatInterface({
     } finally {
       setStreamingContent("");
       setIsLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (failedContent) {
+      setMessages((prev) => prev.filter((m) => !m.id.startsWith("error-")));
+      handleSend(failedContent);
     }
   };
 
@@ -160,9 +173,25 @@ export function ChatInterface({
 
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto max-w-3xl space-y-4">
+          {isFetching && (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          )}
           {messages.map((msg) => (
             <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
           ))}
+          {messages.some((m) => m.id.startsWith("error-")) && failedContent && (
+            <div className="flex justify-center">
+              <button
+                onClick={handleRetry}
+                className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Dobara karo
+              </button>
+            </div>
+          )}
           {streamingContent && (
             <ChatMessage
               role="assistant"

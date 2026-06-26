@@ -11,6 +11,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +42,12 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("Passwords don't match");
+      setLoading(false);
+      return;
+    }
 
     const res = await fetch("/api/auth/signup", {
       method: "POST",
@@ -141,8 +148,20 @@ export default function AuthPage() {
             className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
 
+          {mode === "signup" && (
+            <input
+              type="password"
+              placeholder="Confirm password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          )}
+
           {error && (
-            <p className="text-sm text-red-500">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           )}
 
           <button
