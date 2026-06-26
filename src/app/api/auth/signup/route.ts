@@ -1,0 +1,45 @@
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { sql } from "@/lib/db";
+
+export async function POST(req: Request) {
+  try {
+    const { email, password, name } = await req.json();
+
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: "Email and password required" },
+        { status: 400 }
+      );
+    }
+
+    const existing = await sql`
+      SELECT id FROM users WHERE email = ${email}
+    `;
+
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: "Email already registered" },
+        { status: 400 }
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const rows = await sql`
+      INSERT INTO users (email, name, password)
+      VALUES (${email}, ${name || email.split("@")[0]}, ${hashedPassword})
+      RETURNING id, email, name
+    `;
+
+    const user = rows[0] as { id: string; email: string; name: string };
+
+    return NextResponse.json({ user }, { status: 201 });
+  } catch (error) {
+    console.error("Signup error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
